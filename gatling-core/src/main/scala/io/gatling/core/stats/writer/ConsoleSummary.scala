@@ -118,6 +118,7 @@ private[gatling] object ConsoleSummary {
         categoryCounter.toSeq.sortBy(-_._2).foreach { case (name, count) =>
           ConsoleErrorsWriter.writeError(sb, new ErrorStats(name, count, categoryTotal)).append(Eol)
         }
+        sb.append(Eol)
       }
       sb
     }
@@ -140,8 +141,8 @@ private[gatling] object ConsoleSummary {
     writeSubTitle(sb, "Requests").append(Eol)
     writeRequestsCounter(sb, "Global", globalRequestCounters).append(Eol)
     writeDetailedRequestsCounter(sb).append(Eol)
-    writeErrors(sb).append(Eol)
-    writeSlow(sb).append(Eol)
+    writeErrors(sb)
+    writeSlow(sb)
 
     usersCounters.foreachEntry { (scenarioName, usersStats) =>
       writeUsersCounters(sb, scenarioName, usersStats).append(Eol)

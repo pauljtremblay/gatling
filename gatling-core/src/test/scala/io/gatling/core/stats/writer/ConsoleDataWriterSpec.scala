@@ -31,7 +31,9 @@ class ConsoleDataWriterSpec extends BaseSpec {
 
   private def lines(summary: ConsoleSummary) = summary.text.split("\r?\n")
 
-  private def progressBar(summary: ConsoleSummary) = lines(summary)(8)
+  private def progressBar(summary: ConsoleSummary) = lines(summary)
+    .filter("""\[[# \-]{74}]\s{0,2}\d{1,3}%""".r.matches(_))
+    .head
 
   private def requestsInfo(summary: ConsoleSummary) = lines(summary).slice(3, 6).mkString(Eol)
 
@@ -74,7 +76,7 @@ class ConsoleDataWriterSpec extends BaseSpec {
     progressBar(summary) shouldBe "[###################################################################-------] 90%"
   }
 
-  "console summary" should "display requests without errors" in {
+  "console summary" should "display requests without slow requests or errors" in {
     val requestCounters = mutable.Map("request1" -> new RequestCounters(20, 0, 0))
 
     val summary = ConsoleSummary(
@@ -90,8 +92,8 @@ class ConsoleDataWriterSpec extends BaseSpec {
 
     val actual = requestsInfo(summary)
     actual shouldBe """---- Requests ------------------------------------------------------------------
-                      |> Global                                                   (OK=20     KO=0     )
-                      |> request1                                                 (OK=20     KO=0     )""".stripMargin
+                      |> Global                                                   (OK=20     KO=0      SLOW=0     )
+                      |> request1                                                 (OK=20     KO=0      SLOW=0     )""".stripMargin
   }
 
   it should "display requests with multiple errors" in {
@@ -127,8 +129,8 @@ class ConsoleDataWriterSpec extends BaseSpec {
       mutable.Map("request1" -> new UserCounters(Some(11))),
       new RequestCounters(0, 0, 123456),
       requestCounters,
-      errorsCounters,
       mutable.Map.empty,
+      errorsCounters,
       configuration,
       time
     )
