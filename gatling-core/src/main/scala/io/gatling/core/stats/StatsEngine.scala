@@ -74,6 +74,14 @@ trait StatsEngine extends EnterpriseStatsEngineExtensions {
       message: Option[String]
   ): Unit
 
+  def logSlow(
+      scenario: String,
+      groups: List[String],
+      requestName: String,
+      elapsedMillis: Long,
+      attributes: Map[String, String]
+  ): Unit
+
   def logGroupEnd(
       scenario: String,
       groupBlock: GroupBlock,

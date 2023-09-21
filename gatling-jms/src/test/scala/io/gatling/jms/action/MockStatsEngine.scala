@@ -74,6 +74,14 @@ class MockStatsEngine extends StatsEngine with StrictLogging {
       )
     )
 
+
+  override def logSlow(
+      scenario: String,
+      groups: List[String],
+      requestName: String,
+      elapsedMillis: Long,
+      attributes: Map[String, String]): Unit = {}
+
   override def logGroupEnd(scenario: String, groupBlock: GroupBlock, exitTimestamp: Long): Unit =
     handle(
       MockStatsEngine.Message

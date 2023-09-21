@@ -37,6 +37,13 @@ final case class LogResponse(
     message: Option[String]
 ) extends StatsEngineMessage
 
+final case class LogSlow(
+    scenario: String,
+    groups: List[String],
+    requestName: String,
+    ellapsedMillis: Long,
+    attributes: Map[String, String]) extends StatsEngineMessage
+
 final case class LogGroupEnd(scenario: String, group: GroupBlock, exitTimestamp: Long) extends StatsEngineMessage
 
 final case class LogCrash(scenario: String, groups: List[String], requestName: String, error: String) extends StatsEngineMessage
@@ -69,4 +76,7 @@ class LoggingStatsEngine extends StatsEngine {
 
   override def logCrash(scenario: String, groups: List[String], requestName: String, error: String): Unit =
     msgQueue.addLast(LogCrash(scenario, groups, requestName, error))
+
+  override def logSlow(scenario: String, groups: List[String], requestName: String, elapsedMillis: Long, attributes: Map[String, String]): Unit =
+    msgQueue.addLast(LogSlow(scenario, groups, requestName, elapsedMillis, attributes))
 }

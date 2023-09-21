@@ -19,6 +19,7 @@ package io.gatling.core.stats.writer
 private object RecordHeader {
   private[writer] object Run extends RecordHeader("RUN")
   private[writer] object Request extends RecordHeader("REQUEST")
+  private[writer] object Slow extends RecordHeader("SLOW")
   private[writer] object User extends RecordHeader("USER")
   private[writer] object Group extends RecordHeader("GROUP")
   private[writer] object Error extends RecordHeader("ERROR")
@@ -34,6 +35,7 @@ sealed abstract class RawRecord(header: RecordHeader, recordLength: Int) {
 
 object RawRunRecord extends RawRecord(RecordHeader.Run, 6)
 object RawRequestRecord extends RawRecord(RecordHeader.Request, 7)
+object RawSlowRecord extends RawRecord(RecordHeader.Slow, 6)
 object RawUserRecord extends RawRecord(RecordHeader.User, 4)
 object RawGroupRecord extends RawRecord(RecordHeader.Group, 6)
 object RawErrorRecord extends RawRecord(RecordHeader.Error, 3)
