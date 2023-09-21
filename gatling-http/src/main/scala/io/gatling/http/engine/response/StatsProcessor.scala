@@ -158,11 +158,11 @@ final class DefaultStatsProcessor(
       fullRequestName: String,
       elapsedMillis: Long,
       attributes: Map[String, String]): Unit = {
-    loggingStringBuilderPool
+    logger.debug(loggingStringBuilderPool
       .get()
       .append(Eol)
       .appendWithEol(">>>>>>>>>>>>>>>>>>>>>>>>>>")
-      .appendWithEol("Request:")
+      .appendWithEol("Slow Request:")
       .appendWithEol(fullRequestName)
       .appendWithEol("=========================")
       .appendWithEol("Duration:")
@@ -171,6 +171,6 @@ final class DefaultStatsProcessor(
       .appendWithEol("Attributes:")
       .append(attributes.map({case (name, value) => s"$name: $value"}).mkString(Eol))
       .append("<<<<<<<<<<<<<<<<<<<<<<<<<")
-      .toString
+      .toString)
   }
 }
