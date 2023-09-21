@@ -169,7 +169,7 @@ final class DefaultStatsProcessor(
       .appendWithEol(elapsedMillis.toString)
       .appendWithEol("=========================")
       .appendWithEol("Attributes:")
-      .append(attributes.map({case (name, value) => s"$name: $value"}).mkString(Eol))
+      .appendWithEol(attributes.map({case (name, value) => s"$name: $value"}).mkString(Eol))
       .append("<<<<<<<<<<<<<<<<<<<<<<<<<")
       .toString)
   }
