@@ -218,6 +218,31 @@ class ResponseMessageSerializer(writer: BufferedFileChannelWriter)
   }
 }
 
+class SlowMessageSerializer(writer: BufferedFileChannelWriter)
+  extends DataWriterMessageSerializer[DataWriterMessage.LoadEvent.Slow](writer, RecordHeader.Slow.value) {
+  import DataWriterMessageSerializer._
+
+  override protected def serialize0(slow: DataWriterMessage.LoadEvent.Slow): Unit = {
+    import slow._
+    writeGroups(groupHierarchy)
+    writeSeparator()
+    writer.writeString(name)
+    writeSeparator()
+    writer.writePositiveLong(elapsedMillis)
+    writeSeparator()
+    if (attributes.isEmpty) {
+      writeSpace()
+    } else {
+      attributes.zipWithIndex.foreach { case ((key, value), i) =>
+        if (i > 0) {
+          writeGroupSeparator()
+        }
+        writer.writeString(s"$key:${sanitize(value)}")
+      }
+    }
+  }
+}
+
 class GroupMessageSerializer(writer: BufferedFileChannelWriter)
     extends DataWriterMessageSerializer[DataWriterMessage.LoadEvent.Group](writer, RecordHeader.Group.value) {
   override protected def serialize0(group: DataWriterMessage.LoadEvent.Group): Unit = {
@@ -262,6 +287,7 @@ final class FileData(
     val userStartMessageSerializer: UserStartMessageSerializer,
     val userEndMessageSerializer: UserEndMessageSerializer,
     val responseMessageSerializer: ResponseMessageSerializer,
+    val slowMessageSerializer: SlowMessageSerializer,
     val groupMessageSerializer: GroupMessageSerializer,
     val errorMessageSerializer: ErrorMessageSerializer,
     val writer: BufferedFileChannelWriter
@@ -280,6 +306,7 @@ class LogFileDataWriter(clock: Clock, configuration: GatlingConfiguration) exten
       new UserStartMessageSerializer(writer),
       new UserEndMessageSerializer(writer),
       new ResponseMessageSerializer(writer),
+      new SlowMessageSerializer(writer),
       new GroupMessageSerializer(writer),
       new ErrorMessageSerializer(writer),
       writer
@@ -294,6 +321,7 @@ class LogFileDataWriter(clock: Clock, configuration: GatlingConfiguration) exten
       case user: DataWriterMessage.LoadEvent.UserEnd      => data.userEndMessageSerializer.serialize(user)
       case group: DataWriterMessage.LoadEvent.Group       => data.groupMessageSerializer.serialize(group)
       case response: DataWriterMessage.LoadEvent.Response => data.responseMessageSerializer.serialize(response)
+      case slow: DataWriterMessage.LoadEvent.Slow         => data.slowMessageSerializer.serialize(slow)
       case error: DataWriterMessage.LoadEvent.Error       => data.errorMessageSerializer.serialize(error)
       case _                                              =>
     }

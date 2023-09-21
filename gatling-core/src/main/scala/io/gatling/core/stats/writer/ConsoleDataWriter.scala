@@ -40,16 +40,17 @@ private[gatling] final class UserCounters(val totalUserCount: Option[Long]) {
 }
 
 private object RequestCounters {
-  def empty: RequestCounters = new RequestCounters(0, 0)
+  def empty: RequestCounters = new RequestCounters(0, 0, 0)
 }
 
-private[gatling] final class RequestCounters(var successfulCount: Int, var failedCount: Int)
+private[gatling] final class RequestCounters(var successfulCount: Int, var slowCount: Int, var failedCount: Int)
 
 private[gatling] final class ConsoleData(val startUpTime: Long) extends DataWriterData {
   var complete: Boolean = false
   val usersCounters: mutable.Map[String, UserCounters] = mutable.Map.empty
   val globalRequestCounters: RequestCounters = RequestCounters.empty
   val requestsCounters: mutable.Map[String, RequestCounters] = mutable.LinkedHashMap.empty
+  val slowRequestsCounters: mutable.Map[String, Int] = mutable.LinkedHashMap.empty
   val errorsCounters: mutable.Map[String, Int] = mutable.LinkedHashMap.empty
 }
 
@@ -73,7 +74,7 @@ private[gatling] final class ConsoleDataWriter(clock: Clock, configuration: Gatl
 
     val runDuration = (clock.nowMillis - startUpTime) / 1000
 
-    val summary = ConsoleSummary(runDuration, usersCounters, globalRequestCounters, requestsCounters, errorsCounters, configuration, LocalDateTime.now())
+    val summary = ConsoleSummary(runDuration, usersCounters, globalRequestCounters, requestsCounters, slowRequestsCounters, errorsCounters, configuration, LocalDateTime.now())
     complete = summary.complete
     println(summary.text)
   }
@@ -82,6 +83,7 @@ private[gatling] final class ConsoleDataWriter(clock: Clock, configuration: Gatl
     case user: DataWriterMessage.LoadEvent.UserStart    => onUserStartMessage(user, data)
     case user: DataWriterMessage.LoadEvent.UserEnd      => onUserEndMessage(user, data)
     case response: DataWriterMessage.LoadEvent.Response => onResponseMessage(response, data)
+    case slow: DataWriterMessage.LoadEvent.Slow         => onSlowMessage(slow, data)
     case error: DataWriterMessage.LoadEvent.Error       => onErrorMessage(error, data)
     case _                                              =>
   }
@@ -124,6 +126,14 @@ private[gatling] final class ConsoleDataWriter(clock: Clock, configuration: Gatl
         val errorMessage = message.getOrElse("<no-message>")
         errorsCounters(errorMessage) = errorsCounters.getOrElse(errorMessage, 0) + 1
     }
+  }
+
+  private def onSlowMessage(slow: DataWriterMessage.LoadEvent.Slow, data: ConsoleData): Unit = {
+    import data._
+    import slow._
+
+    globalRequestCounters.slowCount += 1
+    slowRequestsCounters(name) = slowRequestsCounters.getOrElse(name, 0) + 1
   }
 
   private def onErrorMessage(error: DataWriterMessage.LoadEvent.Error, data: ConsoleData): Unit = {

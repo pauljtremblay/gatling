@@ -46,7 +46,13 @@ sealed abstract class StatsProcessor extends StrictLogging {
       errorMessage: Option[String]
   ): Unit
 
-  private val loggingStringBuilderPool = new StringBuilderPool
+  protected def logSlow(
+      fullRequestName: String,
+      elapsedMillis: Long,
+      attributes: Map[String, String]): Unit
+
+  protected val loggingStringBuilderPool = new StringBuilderPool
+
   private def logTx(
       fullRequestName: String,
       session: Session,
@@ -93,6 +99,11 @@ object NoopStatsProcessor extends StatsProcessor {
       result: HttpResult,
       errorMessage: Option[String]
   ): Unit = {}
+
+  override protected def logSlow(
+      fullRequestName: String,
+      elapsedMillis: Long,
+      attributes: Map[String, String]): Unit = {}
 }
 
 final class DefaultStatsProcessor(
@@ -104,7 +115,7 @@ final class DefaultStatsProcessor(
       status: Status,
       result: HttpResult,
       errorMessage: Option[String]
-  ): Unit =
+  ): Unit = {
     statsEngine.logResponse(
       session.scenario,
       session.groups,
@@ -118,4 +129,48 @@ final class DefaultStatsProcessor(
       },
       errorMessage
     )
+    val elapsedMillis = result.endTimestamp - result.startTimestamp
+    // TODO: externalize to config
+    val slowCallThresholdMillis = 500
+    val diagnosticAttributes = Seq(
+      "username",
+      "accountId",
+      "state",
+      "staffType",
+      "staffMemberId",
+    )
+    if (elapsedMillis > slowCallThresholdMillis) {
+      val attributes: Map[String, String] = diagnosticAttributes
+        .map(attributeName => (attributeName, session.attributes.getOrElse(attributeName, "-").toString))
+        .toMap
+      logSlow(fullRequestName, elapsedMillis, attributes)
+      statsEngine.logSlow(
+        session.scenario,
+        session.groups,
+        fullRequestName,
+        elapsedMillis,
+        attributes
+      )
+    }
+  }
+
+  override protected def logSlow(
+      fullRequestName: String,
+      elapsedMillis: Long,
+      attributes: Map[String, String]): Unit = {
+    logger.debug(loggingStringBuilderPool
+      .get()
+      .append(Eol)
+      .appendWithEol(">>>>>>>>>>>>>>>>>>>>>>>>>>")
+      .appendWithEol("Slow Request:")
+      .appendWithEol(fullRequestName)
+      .appendWithEol("=========================")
+      .appendWithEol("Duration:")
+      .appendWithEol(elapsedMillis.toString)
+      .appendWithEol("=========================")
+      .appendWithEol("Attributes:")
+      .appendWithEol(attributes.map({case (name, value) => s"$name: $value"}).mkString(Eol))
+      .append("<<<<<<<<<<<<<<<<<<<<<<<<<")
+      .toString)
+  }
 }

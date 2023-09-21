@@ -31,7 +31,9 @@ class ConsoleDataWriterSpec extends BaseSpec {
 
   private def lines(summary: ConsoleSummary) = summary.text.split("\r?\n")
 
-  private def progressBar(summary: ConsoleSummary) = lines(summary)(8)
+  private def progressBar(summary: ConsoleSummary) = lines(summary)
+    .filter("""\[[# \-]{74}]\s{0,2}\d{1,3}%""".r.matches(_))
+    .head
 
   private def requestsInfo(summary: ConsoleSummary) = lines(summary).slice(3, 6).mkString(Eol)
 
@@ -40,7 +42,7 @@ class ConsoleDataWriterSpec extends BaseSpec {
   "console summary progress bar" should "handle it correctly when all the users are waiting" in {
     val counters = new UserCounters(Some(11))
 
-    val summary = ConsoleSummary(10000, mutable.Map("request1" -> counters), RequestCounters.empty, mutable.Map.empty, mutable.Map.empty, configuration, time)
+    val summary = ConsoleSummary(10000, mutable.Map("request1" -> counters), RequestCounters.empty, mutable.Map.empty, mutable.Map.empty, mutable.Map.empty, configuration, time)
     summary.complete shouldBe false
     progressBar(summary) shouldBe "[                                                                          ]  0%"
   }
@@ -49,7 +51,7 @@ class ConsoleDataWriterSpec extends BaseSpec {
     val counters = new UserCounters(Some(11))
     for (_ <- 1 to 11) counters.userStart()
 
-    val summary = ConsoleSummary(10000, mutable.Map("request1" -> counters), RequestCounters.empty, mutable.Map.empty, mutable.Map.empty, configuration, time)
+    val summary = ConsoleSummary(10000, mutable.Map("request1" -> counters), RequestCounters.empty, mutable.Map.empty, mutable.Map.empty, mutable.Map.empty, configuration, time)
     summary.complete shouldBe false
     progressBar(summary) shouldBe "[--------------------------------------------------------------------------]  0%"
   }
@@ -59,7 +61,7 @@ class ConsoleDataWriterSpec extends BaseSpec {
     for (_ <- 1 to 11) counters.userStart()
     for (_ <- 1 to 11) counters.userDone()
 
-    val summary = ConsoleSummary(10000, mutable.Map("request1" -> counters), RequestCounters.empty, mutable.Map.empty, mutable.Map.empty, configuration, time)
+    val summary = ConsoleSummary(10000, mutable.Map("request1" -> counters), RequestCounters.empty, mutable.Map.empty, mutable.Map.empty, mutable.Map.empty, configuration, time)
     summary.complete shouldBe true
     progressBar(summary) shouldBe "[##########################################################################]100%"
   }
@@ -69,19 +71,20 @@ class ConsoleDataWriterSpec extends BaseSpec {
     for (_ <- 1 to 11) counters.userStart()
     for (_ <- 1 to 10) counters.userDone()
 
-    val summary = ConsoleSummary(10000, mutable.Map("request1" -> counters), RequestCounters.empty, mutable.Map.empty, mutable.Map.empty, configuration, time)
+    val summary = ConsoleSummary(10000, mutable.Map("request1" -> counters), RequestCounters.empty, mutable.Map.empty, mutable.Map.empty, mutable.Map.empty, configuration, time)
     summary.complete shouldBe false
     progressBar(summary) shouldBe "[###################################################################-------] 90%"
   }
 
-  "console summary" should "display requests without errors" in {
-    val requestCounters = mutable.Map("request1" -> new RequestCounters(20, 0))
+  "console summary" should "display requests without slow requests or errors" in {
+    val requestCounters = mutable.Map("request1" -> new RequestCounters(20, 0, 0))
 
     val summary = ConsoleSummary(
       10000,
       mutable.Map("request1" -> new UserCounters(Some(11))),
-      new RequestCounters(20, 0),
+      new RequestCounters(20, 0, 0),
       requestCounters,
+      mutable.Map.empty,
       mutable.Map.empty,
       configuration,
       time
@@ -89,19 +92,20 @@ class ConsoleDataWriterSpec extends BaseSpec {
 
     val actual = requestsInfo(summary)
     actual shouldBe """---- Requests ------------------------------------------------------------------
-                      |> Global                                                   (OK=20     KO=0     )
-                      |> request1                                                 (OK=20     KO=0     )""".stripMargin
+                      |> Global                                                   (OK=20     KO=0      SLOW=0     )
+                      |> request1                                                 (OK=20     KO=0      SLOW=0     )""".stripMargin
   }
 
   it should "display requests with multiple errors" in {
-    val requestCounters = mutable.Map("request1" -> new RequestCounters(0, 20))
-
+    val requestCounters = mutable.Map("request1" -> new RequestCounters(0, 3, 20))
+    val slowCounters = mutable.Map("slow1" -> 2, "slow2" -> 1)
     val errorsCounters1 = mutable.Map("error1" -> 19, "error2" -> 1)
     val summary1 = ConsoleSummary(
       10000,
       mutable.Map("request1" -> new UserCounters(Some(11))),
-      new RequestCounters(0, 20),
+      new RequestCounters(0, 0, 20),
       requestCounters,
+      slowCounters,
       errorsCounters1,
       configuration,
       time
@@ -116,15 +120,16 @@ class ConsoleDataWriterSpec extends BaseSpec {
   }
 
   it should "display requests with high number of errors" in {
-    val requestCounters = mutable.Map("request1" -> new RequestCounters(0, 123456))
+    val requestCounters = mutable.Map("request1" -> new RequestCounters(0, 0, 123456))
     val loremIpsum =
       "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
     val errorsCounters = mutable.Map(loremIpsum -> 123456)
     val summary = ConsoleSummary(
       10000,
       mutable.Map("request1" -> new UserCounters(Some(11))),
-      new RequestCounters(0, 123456),
+      new RequestCounters(0, 0, 123456),
       requestCounters,
+      mutable.Map.empty,
       errorsCounters,
       configuration,
       time

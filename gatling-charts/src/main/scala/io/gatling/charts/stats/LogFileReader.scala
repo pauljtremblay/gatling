@@ -84,6 +84,7 @@ private[gatling] final class LogFileReader(inputFiles: Seq[Path], configuration:
     logger.info("First pass")
 
     var count = 0
+    var slowCount = 0
 
     var injectStart = Long.MaxValue
     var injectEnd = Long.MinValue
@@ -93,6 +94,9 @@ private[gatling] final class LogFileReader(inputFiles: Seq[Path], configuration:
 
     def updateInjectEnd(eventEnd: Long): Unit =
       injectEnd = math.max(injectEnd, eventEnd)
+
+    def updateSlowCount(): Unit =
+      slowCount = slowCount + 1
 
     val runMessages = mutable.ListBuffer.empty[RunMessage]
     val assertions = mutable.LinkedHashSet.empty[Assertion]
@@ -105,6 +109,9 @@ private[gatling] final class LogFileReader(inputFiles: Seq[Path], configuration:
         case RawRequestRecord(array) =>
           updateInjectStart(array(3).toLong)
           updateInjectEnd(array(4).toLong)
+
+        case RawSlowRecord(_) =>
+          updateSlowCount()
 
         case RawUserRecord(array) =>
           val timestamp = array(3).toLong

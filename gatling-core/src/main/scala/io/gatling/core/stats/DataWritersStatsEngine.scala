@@ -126,6 +126,18 @@ class DataWritersStatsEngine(dataWriterInitMessage: DataWriterMessage.Init, data
       )
     }
 
+  override def logSlow(scenario: String, groups: List[String], requestName: String, elapsedMillis: Long, attributes: Map[String, String]): Unit = {
+    dispatch(
+      DataWriterMessage.LoadEvent.Slow(
+        scenario,
+        groups,
+        requestName,
+        elapsedMillis,
+        attributes
+      )
+    )
+  }
+
   override def logGroupEnd(
       scenario: String,
       groupBlock: GroupBlock,

@@ -42,6 +42,7 @@ private[gatling] object ConsoleSummary {
       usersCounters: mutable.Map[String, UserCounters],
       globalRequestCounters: RequestCounters,
       requestsCounters: mutable.Map[String, RequestCounters],
+      slowRequestsCounters: mutable.Map[String, Int],
       errorsCounters: mutable.Map[String, Int],
       configuration: GatlingConfiguration,
       time: TemporalAccessor
@@ -93,6 +94,8 @@ private[gatling] object ConsoleSummary {
         .append(successfulCount.toString.rightPad(6))
         .append(" KO=")
         .append(failedCount.toString.rightPad(6))
+        .append(" SLOW=")
+        .append(slowCount.toString.rightPad(6))
         .append(')')
     }
 
@@ -106,18 +109,25 @@ private[gatling] object ConsoleSummary {
       sb
     }
 
-    def writeErrors(sb: jl.StringBuilder): jl.StringBuilder = {
-      if (errorsCounters.nonEmpty) {
-        val errorsTotal = errorsCounters.values.sum
+    def writeCategory(sb: jl.StringBuilder, category: String, categoryCounter: mutable.Map[String, Int]): jl.StringBuilder = {
+      if (categoryCounter.nonEmpty) {
+        val categoryTotal = categoryCounter.values.sum
 
-        writeSubTitle(sb, "Errors").append(Eol)
+        writeSubTitle(sb, category).append(Eol)
 
-        errorsCounters.toSeq.sortBy(-_._2).foreach { case (message, count) =>
-          ConsoleErrorsWriter.writeError(sb, new ErrorStats(message, count, errorsTotal)).append(Eol)
+        categoryCounter.toSeq.sortBy(-_._2).foreach { case (name, count) =>
+          ConsoleErrorsWriter.writeError(sb, new ErrorStats(name, count, categoryTotal)).append(Eol)
         }
+        sb.append(Eol)
       }
       sb
     }
+
+    def writeErrors(sb: jl.StringBuilder): jl.StringBuilder =
+      writeCategory(sb, "Errors", errorsCounters)
+
+    def writeSlow(sb: jl.StringBuilder): jl.StringBuilder =
+      writeCategory(sb, "Slow", slowRequestsCounters)
 
     val sb = new jl.StringBuilder()
       .append(Eol)
@@ -131,7 +141,8 @@ private[gatling] object ConsoleSummary {
     writeSubTitle(sb, "Requests").append(Eol)
     writeRequestsCounter(sb, "Global", globalRequestCounters).append(Eol)
     writeDetailedRequestsCounter(sb).append(Eol)
-    writeErrors(sb).append(Eol)
+    writeErrors(sb)
+    writeSlow(sb)
 
     usersCounters.foreachEntry { (scenarioName, usersStats) =>
       writeUsersCounters(sb, scenarioName, usersStats).append(Eol)

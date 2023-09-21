@@ -61,6 +61,14 @@ private[gatling] object DataWriterMessage {
         message: Option[String]
     ) extends LoadEvent
 
+    final case class Slow(
+        scenario: String,
+        groupHierarchy: List[String],
+        name: String,
+        elapsedMillis: Long,
+        attributes: Map[String, String]
+    ) extends LoadEvent
+
     final case class Group(
         scenario: String,
         groupHierarchy: List[String],
